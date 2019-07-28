@@ -1,0 +1,14 @@
+1. Create first pacakge:
+curl http://localhost:8000/graphql -H 'Content-Type: application/json' --data-binary '{ "query": "mutation { createPackage(name: \"pen\", author: \"nila\", description: \"fourth package\") {package {name, author, description}}}"}'
+
+2. Create second package:
+curl http://localhost:8000/graphql -H 'Content-Type: application/json' --data-binary '{ "query": "mutation { createPackage(name: \"paper\", author: \"nila\", description: \"third package\") {package {name, author, description}}}"}'
+
+3. Create third package depending on 1 and 2:
+curl http://localhost:8000/graphql -H 'Content-Type: application/json' --data-binary '{ "query": "mutation { createPackage(name: \"book\", author: \"nila\", description: \"second package\", deps: [\"pen\", \"paper\"]) {package {name, author, description}}}"}'
+
+4. Retreive deps:
+curl http://localhost:8000/graphql -H 'Content-Type: application/json' --data-binary '{ "query": "query { package(name: \"book\") {dependencies}}"}'
+
+5. Retreive installOrder:
+curl http://localhost:8000/graphql -H 'Content-Type: application/json' --data-binary '{ "query": "query { package(name: \"book\") {installOrder}}"}'
