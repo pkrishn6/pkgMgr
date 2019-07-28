@@ -16,6 +16,7 @@ class Package(graphene.ObjectType):
     last_modified_at = graphene.DateTime(description="DateTime when the package was last modified")
     description = graphene.String(description="Package description")
     dependencies = graphene.List(graphene.String, description="All dependencies of package")
+    install_order = graphene.List(graphene.String, description="Package installation order")
 
     def resolve_name(self, info, **kwargs):
         return self.name
@@ -27,8 +28,13 @@ class Package(graphene.ObjectType):
         return self.description
 
     def resolve_dependencies(self, info, **kwargs):
-        pkg_name = kwargs.get('name')
+        pkg_name = self.name
         return mgr.getPkgDeps(pkg_name)
+
+    def resolve_install_order(self, info, **kwargs):
+        pkg_name = self.name
+        logger.info("package name is", pkg_name)
+        return mgr.installOrder(pkg_name)
 
 
 class Query:
@@ -45,43 +51,31 @@ class Query:
     def resolve_packages(root, info):
         return models.Package.objects.all()
 
-    @staticmethod
-    def resolve_install_order(root, info, **kwargs):
-        pkg_name = kwargs.get('name')
-        return mgr.installOrder(pkg_name)
-
-
-class CreatePackageInput(graphene.InputObjectType):
-    name = graphene.String(required=True)
-    author = graphene.String(required=False)
-    description = graphene.String(required=False)
-
 
 class CreatePackage(graphene.Mutation):
-
     class Arguments:
-        input = CreatePackageInput(required=True)
+        name = graphene.String(required=True)
+        author = graphene.String()
+        description = graphene.String()
+        deps = graphene.List(graphene.String)
 
     # Return
     logger.error("Handling mutation here")
     package = graphene.Field(Package)
 
-    def mutate(self, info, name):
+    def mutate(self, info, name, author="", description="", deps=None):
         logger.error("Handling mutation")
         with transaction.atomic():
             # Atomic transaction to roll back if add_package throws exception
-            package_name = input.name
-            package_author = input.name if input.name else ""
-            package_description = input.description if input.description else ""
-            package_deps = []
-            p = models.Package(name=package_name, author=package_author, description=package_description)
+            package_deps = deps if deps else []
+            p = models.Package(name=name, author=author, description=description)
             p.save()
 
-            mgr.addPkg(package_name, package_deps)
+            mgr.addPkg(name, package_deps)
 
-        return CreatePackage(ok=True)
+        return CreatePackage(package=Query.resolve_package(self, info, name=p.name))
 
 
 class Mutation:
     logger.error("Handling top level mutation")
-    create_package = CreatePackage.Field(description="Creates a new package.")
+    create_package = CreatePackage.Field()
