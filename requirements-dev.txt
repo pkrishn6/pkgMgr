@@ -1,0 +1,16 @@
+# Runtime requirements
+--requirement requirements.txt
+
+# Testing
+coverage
+parameterized
+
+# Linting
+flake8
+
+# Documentation
+Sphinx
+
+# Miscellaneous (if we need them)
+Paver
+colorama

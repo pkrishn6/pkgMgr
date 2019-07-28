@@ -1,0 +1,43 @@
+version: '2.1'
+services:
+  pkg-db:
+    image: "postgres:11-alpine"
+    container_name: 'pkg-db'
+    hostname: 'pkg-db'
+    environment:
+      POSTGRES_PASSWORD: abcd1234
+      POSTGRES_USER: pkg
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: pkg
+    ports:
+    - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pkg"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - backend
+  pkg-django:
+    image: "pkg:latest"
+    command: "./launch-server.sh"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: 'pkg-django'
+    hostname: 'pkg-django'
+    environment:
+      POSTGRES_PASSWORD: abcd1234
+      POSTGRES_DB: pkg
+      POSTGRES_USER: pkg
+      POSTGRES_PORT: 5432
+      POSTGRES_HOST: pkg-db
+    depends_on:
+      pkg-db:
+        condition: service_healthy
+    networks:
+      - backend
+    ports:
+    - 8000:8000
+networks:
+  backend:
