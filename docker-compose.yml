@@ -17,7 +17,7 @@ services:
       timeout: 3s
       retries: 10
     networks:
-      - backend
+      - pkgmgr_backend
   pkg-django:
     image: "pkg:latest"
     command: "./launch-server.sh"
@@ -36,8 +36,8 @@ services:
       pkg-db:
         condition: service_healthy
     networks:
-      - backend
+      - pkgmgr_backend
     ports:
     - 8000:8000
 networks:
-  backend:
+  pkgmgr_backend:

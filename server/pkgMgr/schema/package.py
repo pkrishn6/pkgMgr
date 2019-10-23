@@ -3,6 +3,7 @@ import logging
 from ..lib.pkg import PkgMgr
 from .. import models  # Django ORM
 from django.db import transaction
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 mgr = PkgMgr()
@@ -33,7 +34,6 @@ class Package(graphene.ObjectType):
 
     def resolve_install_order(self, info, **kwargs):
         pkg_name = self.name
-        logger.info("package name is", pkg_name)
         return mgr.installOrder(pkg_name)
 
 
@@ -60,11 +60,11 @@ class CreatePackage(graphene.Mutation):
         deps = graphene.List(graphene.String)
 
     # Return
-    logger.error("Handling mutation here")
+    logger.info("Handling mutation here")
     package = graphene.Field(Package)
 
     def mutate(self, info, name, author="", description="", deps=None):
-        logger.error("Handling mutation")
+        logger.info("Handling mutation")
         with transaction.atomic():
             # Atomic transaction to roll back if add_package throws exception
             package_deps = deps if deps else []
@@ -76,6 +76,56 @@ class CreatePackage(graphene.Mutation):
         return CreatePackage(package=Query.resolve_package(self, info, name=p.name))
 
 
+class DeletePackage(graphene.Mutation):
+    class Arguments:
+        name = graphene.String(required=True)
+
+    logger.info("Handling delete package mutation")
+    success = graphene.Boolean(description="success of deletion operation")
+
+    def mutate(self, info, name):
+        with transaction.atomic():
+            mgr.delPkg(name)
+
+            p = models.Package.objects.select_for_update().get(name=name)
+            p.delete()
+
+        return DeletePackage(success=True)
+
+
+class UpdatePackage(graphene.Mutation):
+    class Arguments:
+        name = graphene.String(required=True)
+        author = graphene.String()
+        description = graphene.String()
+        deps = graphene.List(graphene.String)
+
+    # Return
+    package = graphene.Field(Package)
+
+    def mutate(self, info, name, author=None, description=None, deps=None):
+        logger.info("Handling mutation")
+        with transaction.atomic():
+            # Atomic transaction to roll back if add_package throws exception
+            p = models.Package.objects.select_for_update().get(name=name)
+
+            if author:
+                p.author = author
+            if description:
+                p.description = description
+
+            p.last_modified_at = timezone.now()
+
+            package_deps = deps if deps else []
+            p.save()
+
+            mgr.updatePkg(name, package_deps)
+
+        return UpdatePackage(package=Query.resolve_package(self, info, name=p.name))
+
+
 class Mutation:
     logger.error("Handling top level mutation")
     create_package = CreatePackage.Field()
+    delete_package = DeletePackage.Field()
+    update_package = UpdatePackage.Field()
