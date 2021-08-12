@@ -7,4 +7,4 @@ django-cors-headers
 raven==6.9.0
 psycopg2==2.7.6.1
 PyYAML==3.13
-yamale==1.10.0
+yamale==3.0.8
